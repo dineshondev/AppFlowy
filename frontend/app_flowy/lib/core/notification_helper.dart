@@ -1,33 +1,6 @@
 import 'dart:typed_data';
 import 'package:flowy_sdk/protobuf/dart-notify/protobuf.dart';
-import 'package:flowy_sdk/protobuf/flowy-user/protobuf.dart';
 import 'package:dartz/dartz.dart';
-import 'package:flowy_sdk/protobuf/flowy-error/errors.pb.dart';
-import 'package:flowy_sdk/protobuf/flowy-folder/dart_notification.pb.dart';
-
-typedef UserNotificationCallback = void Function(UserNotification, Either<Uint8List, FlowyError>);
-
-class UserNotificationParser extends NotificationParser<UserNotification, FlowyError> {
-  UserNotificationParser({required String id, required UserNotificationCallback callback})
-      : super(
-          id: id,
-          callback: callback,
-          tyParser: (ty) => UserNotification.valueOf(ty),
-          errorParser: (bytes) => FlowyError.fromBuffer(bytes),
-        );
-}
-
-typedef NotificationCallback = void Function(FolderNotification, Either<Uint8List, FlowyError>);
-
-class FolderNotificationParser extends NotificationParser<FolderNotification, FlowyError> {
-  FolderNotificationParser({String? id, required NotificationCallback callback})
-      : super(
-          id: id,
-          callback: callback,
-          tyParser: (ty) => FolderNotification.valueOf(ty),
-          errorParser: (bytes) => FlowyError.fromBuffer(bytes),
-        );
-}
 
 class NotificationParser<T, E> {
   String? id;

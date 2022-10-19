@@ -1,4 +1,4 @@
-import 'package:app_flowy/plugin/plugin.dart';
+import 'package:app_flowy/startup/plugin/plugin.dart';
 import 'package:flowy_infra/image.dart';
 import 'package:flowy_infra/theme.dart';
 import 'package:flowy_infra_ui/flowy_infra_ui.dart';
@@ -28,7 +28,8 @@ class AddButton extends StatelessWidget {
           onSelected: onSelected,
         ).show(context);
       },
-      icon: svg("home/add").padding(horizontal: 3, vertical: 3),
+      icon: svgWidget("home/add", color: theme.iconColor)
+          .padding(horizontal: 3, vertical: 3),
     );
   }
 }
@@ -46,8 +47,8 @@ class ActionList {
         return CreateItem(
           pluginBuilder: pluginBuilder,
           onSelected: (builder) {
-            FlowyOverlay.of(buildContext).remove(_identifier);
             onSelected(builder);
+            FlowyOverlay.of(buildContext).remove(_identifier);
           },
         );
       },
@@ -60,13 +61,20 @@ class ActionList {
       itemBuilder: (context, index) => items[index],
       anchorContext: anchorContext,
       anchorDirection: AnchorDirection.bottomRight,
-      width: 120,
-      height: 80,
+      constraints: BoxConstraints(
+        minWidth: 120,
+        maxWidth: 280,
+        minHeight: items.length * (CreateItem.height),
+        maxHeight: items.length * (CreateItem.height),
+      ),
     );
   }
 }
 
 class CreateItem extends StatelessWidget {
+  static const double height = 30;
+  static const double verticalPadding = 6;
+
   final PluginBuilder pluginBuilder;
   final Function(PluginBuilder) onSelected;
   const CreateItem({
@@ -78,20 +86,28 @@ class CreateItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<AppTheme>();
-    final config = HoverDisplayConfig(hoverColor: theme.hover);
+    final config = HoverStyle(hoverColor: theme.hover);
 
     return FlowyHover(
-      config: config,
-      builder: (context, onHover) {
-        return GestureDetector(
-          onTap: () => onSelected(pluginBuilder),
-          child: FlowyText.medium(
-            pluginBuilder.menuName,
-            color: theme.textColor,
-            fontSize: 12,
-          ).padding(horizontal: 10, vertical: 6),
-        );
-      },
+      style: config,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onSelected(pluginBuilder),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: 120,
+            minHeight: CreateItem.height,
+          ),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FlowyText.medium(
+              pluginBuilder.menuName,
+              color: theme.textColor,
+              fontSize: 12,
+            ).padding(horizontal: 10),
+          ),
+        ),
+      ),
     );
   }
 }

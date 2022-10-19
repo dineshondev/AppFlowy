@@ -10,7 +10,7 @@ import 'package:flowy_infra_ui/widget/rounded_input_field.dart';
 import 'package:flowy_infra_ui/widget/spacing.dart';
 import 'package:flowy_infra_ui/style_widget/snap_bar.dart';
 import 'package:flowy_sdk/protobuf/flowy-error/errors.pb.dart';
-import 'package:flowy_sdk/protobuf/flowy-user-data-model/protobuf.dart' show UserProfile;
+import 'package:flowy_sdk/protobuf/flowy-user/protobuf.dart' show UserProfilePB;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dartz/dartz.dart';
@@ -39,7 +39,7 @@ class SignInScreen extends StatelessWidget {
     );
   }
 
-  void _handleSuccessOrFail(Either<UserProfile, FlowyError> result, BuildContext context) {
+  void _handleSuccessOrFail(Either<UserProfilePB, FlowyError> result, BuildContext context) {
     result.fold(
       (user) => router.pushWelcomeScreen(context, user),
       (error) => showSnapBar(context, error.msg),
@@ -94,6 +94,7 @@ class SignUpPrompt extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = context.watch<AppTheme>();
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(LocaleKeys.signIn_dontHaveAnAccount.tr(), style: TextStyle(color: theme.shader3, fontSize: 12)),
         TextButton(
@@ -107,7 +108,6 @@ class SignUpPrompt extends StatelessWidget {
           ),
         ),
       ],
-      mainAxisAlignment: MainAxisAlignment.center,
     );
   }
 }
@@ -170,11 +170,11 @@ class PasswordTextField extends StatelessWidget {
         return RoundedInputField(
           obscureText: true,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          obscureIcon: svg("home/hide"),
-          obscureHideIcon: svg("home/show"),
+          obscureIcon: svgWidget("home/hide"),
+          obscureHideIcon: svgWidget("home/show"),
           hintText: LocaleKeys.signIn_passwordHint.tr(),
           normalBorderColor: theme.shader4,
-          highlightBorderColor: theme.red,
+          errorBorderColor: theme.red,
           cursorColor: theme.main1,
           errorText: context.read<SignInBloc>().state.passwordError.fold(() => "", (error) => error),
           onChanged: (value) => context.read<SignInBloc>().add(SignInEvent.passwordChanged(value)),
@@ -199,7 +199,7 @@ class EmailTextField extends StatelessWidget {
           hintText: LocaleKeys.signIn_emailHint.tr(),
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           normalBorderColor: theme.shader4,
-          highlightBorderColor: theme.red,
+          errorBorderColor: theme.red,
           cursorColor: theme.main1,
           errorText: context.read<SignInBloc>().state.emailError.fold(() => "", (error) => error),
           onChanged: (value) => context.read<SignInBloc>().add(SignInEvent.emailChanged(value)),

@@ -1,39 +1,42 @@
 import 'dart:async';
+
 import 'package:dartz/dartz.dart';
 import 'package:flowy_sdk/dispatch/dispatch.dart';
-import 'package:flowy_sdk/protobuf/flowy-folder-data-model/app.pb.dart';
-import 'package:flowy_sdk/protobuf/flowy-folder-data-model/view.pb.dart';
 import 'package:flowy_sdk/protobuf/flowy-error/errors.pb.dart';
-import 'package:app_flowy/plugin/plugin.dart';
+import 'package:flowy_sdk/protobuf/flowy-folder/app.pb.dart';
+import 'package:flowy_sdk/protobuf/flowy-folder/view.pb.dart';
+
+import 'package:app_flowy/startup/plugin/plugin.dart';
 
 class AppService {
-  Future<Either<App, FlowyError>> getAppDesc({required String appId}) {
-    final request = AppId.create()..value = appId;
+  Future<Either<AppPB, FlowyError>> readApp({required String appId}) {
+    final payload = AppIdPB.create()..value = appId;
 
-    return FolderEventReadApp(request).send();
+    return FolderEventReadApp(payload).send();
   }
 
-  Future<Either<View, FlowyError>> createView({
+  Future<Either<ViewPB, FlowyError>> createView({
     required String appId,
     required String name,
-    required String desc,
-    required PluginDataType dataType,
+    String? desc,
+    required ViewDataTypePB dataType,
     required PluginType pluginType,
+    required ViewLayoutTypePB layoutType,
   }) {
-    final request = CreateViewPayload.create()
+    var payload = CreateViewPayloadPB.create()
       ..belongToId = appId
       ..name = name
-      ..desc = desc
+      ..desc = desc ?? ""
       ..dataType = dataType
-      ..pluginType = pluginType;
+      ..layout = layoutType;
 
-    return FolderEventCreateView(request).send();
+    return FolderEventCreateView(payload).send();
   }
 
-  Future<Either<List<View>, FlowyError>> getViews({required String appId}) {
-    final request = AppId.create()..value = appId;
+  Future<Either<List<ViewPB>, FlowyError>> getViews({required String appId}) {
+    final payload = AppIdPB.create()..value = appId;
 
-    return FolderEventReadApp(request).send().then((result) {
+    return FolderEventReadApp(payload).send().then((result) {
       return result.fold(
         (app) => left(app.belongings.items),
         (error) => right(error),
@@ -42,16 +45,36 @@ class AppService {
   }
 
   Future<Either<Unit, FlowyError>> delete({required String appId}) {
-    final request = AppId.create()..value = appId;
+    final request = AppIdPB.create()..value = appId;
     return FolderEventDeleteApp(request).send();
   }
 
-  Future<Either<Unit, FlowyError>> updateApp({required String appId, String? name}) {
-    UpdateAppPayload request = UpdateAppPayload.create()..appId = appId;
+  Future<Either<Unit, FlowyError>> deleteView({required String viewId}) {
+    final request = RepeatedViewIdPB.create()..items.add(viewId);
+    return FolderEventDeleteView(request).send();
+  }
+
+  Future<Either<Unit, FlowyError>> updateApp(
+      {required String appId, String? name}) {
+    UpdateAppPayloadPB payload = UpdateAppPayloadPB.create()..appId = appId;
 
     if (name != null) {
-      request.name = name;
+      payload.name = name;
     }
-    return FolderEventUpdateApp(request).send();
+    return FolderEventUpdateApp(payload).send();
+  }
+
+  Future<Either<Unit, FlowyError>> moveView({
+    required String viewId,
+    required int fromIndex,
+    required int toIndex,
+  }) {
+    final payload = MoveFolderItemPayloadPB.create()
+      ..itemId = viewId
+      ..from = fromIndex
+      ..to = toIndex
+      ..ty = MoveFolderItemType.MoveView;
+
+    return FolderEventMoveFolderItem(payload).send();
   }
 }

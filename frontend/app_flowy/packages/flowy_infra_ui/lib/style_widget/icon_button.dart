@@ -57,7 +57,7 @@ class FlowyIconButton extends StatelessWidget {
           onPressed: onPressed,
           child: Padding(
             padding: iconPadding,
-            child: SizedBox.fromSize(child: child, size: childSize),
+            child: SizedBox.fromSize(size: childSize, child: child),
           ),
         ),
       ),
@@ -77,7 +77,7 @@ class FlowyDropdownButton extends StatelessWidget {
     return FlowyIconButton(
       width: 16,
       onPressed: onPressed,
-      icon: svg("home/drop_down_show"),
+      icon: svgWidget("home/drop_down_show"),
     );
   }
 }

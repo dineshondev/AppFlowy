@@ -1,84 +1,154 @@
 import 'dart:async';
+import 'package:app_flowy/core/folder_notification.dart';
+import 'package:app_flowy/core/user_notification.dart';
 import 'package:dartz/dartz.dart';
-import 'package:flowy_sdk/protobuf/flowy-folder-data-model/workspace.pb.dart';
+import 'package:flowy_sdk/protobuf/flowy-error-code/code.pb.dart';
+import 'package:flowy_sdk/protobuf/flowy-folder/workspace.pb.dart';
 import 'package:flowy_sdk/protobuf/flowy-error/errors.pb.dart';
 import 'dart:typed_data';
-import 'package:app_flowy/core/notification_helper.dart';
 import 'package:flowy_infra/notifier.dart';
 import 'package:flowy_sdk/protobuf/dart-notify/protobuf.dart';
 import 'package:flowy_sdk/protobuf/flowy-folder/dart_notification.pb.dart';
-import 'package:flowy_sdk/protobuf/flowy-user-data-model/errors.pb.dart';
-import 'package:flowy_sdk/protobuf/flowy-user-data-model/user_profile.pb.dart';
+import 'package:flowy_sdk/protobuf/flowy-user/user_profile.pb.dart';
 import 'package:flowy_sdk/protobuf/flowy-user/dart_notification.pb.dart' as user;
 import 'package:flowy_sdk/rust_stream.dart';
 
-
-typedef UserProfileUpdatedNotifierValue = Either<UserProfile, FlowyError>;
-typedef AuthNotifierValue = Either<Unit, FlowyError>;
-typedef WorkspaceUpdatedNotifierValue = Either<List<Workspace>, FlowyError>;
+typedef UserProfileNotifyValue = Either<UserProfilePB, FlowyError>;
+typedef AuthNotifyValue = Either<Unit, FlowyError>;
 
 class UserListener {
   StreamSubscription<SubscribeObject>? _subscription;
-  final profileUpdatedNotifier = PublishNotifier<UserProfileUpdatedNotifierValue>();
-  final authDidChangedNotifier = PublishNotifier<AuthNotifierValue>();
-  final workspaceUpdatedNotifier = PublishNotifier<WorkspaceUpdatedNotifierValue>();
+  PublishNotifier<AuthNotifyValue>? _authNotifier = PublishNotifier();
+  PublishNotifier<UserProfileNotifyValue>? _profileNotifier = PublishNotifier();
 
-  late FolderNotificationParser _workspaceParser;
-  late UserNotificationParser _userParser;
-  late UserProfile _user;
+  UserNotificationParser? _userParser;
+  final UserProfilePB _userProfile;
   UserListener({
-    required UserProfile user,
-  }) {
-    _user = user;
-  }
+    required UserProfilePB userProfile,
+  }) : _userProfile = userProfile;
 
-  void start() {
-    _workspaceParser = FolderNotificationParser(id: _user.token, callback: _notificationCallback);
-    _userParser = UserNotificationParser(id: _user.token, callback: _userNotificationCallback);
+  void start({
+    void Function(AuthNotifyValue)? onAuthChanged,
+    void Function(UserProfileNotifyValue)? onProfileUpdated,
+  }) {
+    if (onProfileUpdated != null) {
+      _profileNotifier?.addPublishListener(onProfileUpdated);
+    }
+
+    if (onAuthChanged != null) {
+      _authNotifier?.addPublishListener(onAuthChanged);
+    }
+
+    _userParser = UserNotificationParser(id: _userProfile.token, callback: _userNotificationCallback);
     _subscription = RustStreamReceiver.listen((observable) {
-      _workspaceParser.parse(observable);
-      _userParser.parse(observable);
+      _userParser?.parse(observable);
     });
   }
 
   Future<void> stop() async {
+    _userParser = null;
     await _subscription?.cancel();
-    profileUpdatedNotifier.dispose();
-    authDidChangedNotifier.dispose();
-    workspaceUpdatedNotifier.dispose();
-  }
+    _profileNotifier?.dispose();
+    _profileNotifier = null;
 
-  void _notificationCallback(FolderNotification ty, Either<Uint8List, FlowyError> result) {
-    switch (ty) {
-      case FolderNotification.UserCreateWorkspace:
-      case FolderNotification.UserDeleteWorkspace:
-      case FolderNotification.WorkspaceListUpdated:
-        result.fold(
-          (payload) => workspaceUpdatedNotifier.value = left(RepeatedWorkspace.fromBuffer(payload).items),
-          (error) => workspaceUpdatedNotifier.value = right(error),
-        );
-        break;
-      case FolderNotification.UserUnauthorized:
-        result.fold(
-          (_) {},
-          (error) => authDidChangedNotifier.value = right(FlowyError.create()..code = ErrorCode.UserUnauthorized.value),
-        );
-        break;
-      default:
-        break;
-    }
+    _authNotifier?.dispose();
+    _authNotifier = null;
   }
 
   void _userNotificationCallback(user.UserNotification ty, Either<Uint8List, FlowyError> result) {
     switch (ty) {
       case user.UserNotification.UserUnauthorized:
         result.fold(
-          (payload) => profileUpdatedNotifier.value = left(UserProfile.fromBuffer(payload)),
-          (error) => profileUpdatedNotifier.value = right(error),
+          (_) {},
+          (error) => _authNotifier?.value = right(error),
+        );
+        break;
+      case user.UserNotification.UserProfileUpdated:
+        result.fold(
+          (payload) => _profileNotifier?.value = left(UserProfilePB.fromBuffer(payload)),
+          (error) => _profileNotifier?.value = right(error),
         );
         break;
       default:
         break;
     }
+  }
+}
+
+typedef WorkspaceListNotifyValue = Either<List<WorkspacePB>, FlowyError>;
+typedef WorkspaceSettingNotifyValue = Either<CurrentWorkspaceSettingPB, FlowyError>;
+
+class UserWorkspaceListener {
+  PublishNotifier<AuthNotifyValue>? _authNotifier = PublishNotifier();
+  PublishNotifier<WorkspaceListNotifyValue>? _workspacesChangedNotifier = PublishNotifier();
+  PublishNotifier<WorkspaceSettingNotifyValue>? _settingChangedNotifier = PublishNotifier();
+
+  FolderNotificationListener? _listener;
+  final UserProfilePB _userProfile;
+
+  UserWorkspaceListener({
+    required UserProfilePB userProfile,
+  }) : _userProfile = userProfile;
+
+  void start({
+    void Function(AuthNotifyValue)? onAuthChanged,
+    void Function(WorkspaceListNotifyValue)? onWorkspacesUpdated,
+    void Function(WorkspaceSettingNotifyValue)? onSettingUpdated,
+  }) {
+    if (onAuthChanged != null) {
+      _authNotifier?.addPublishListener(onAuthChanged);
+    }
+
+    if (onWorkspacesUpdated != null) {
+      _workspacesChangedNotifier?.addPublishListener(onWorkspacesUpdated);
+    }
+
+    if (onSettingUpdated != null) {
+      _settingChangedNotifier?.addPublishListener(onSettingUpdated);
+    }
+
+    _listener = FolderNotificationListener(
+      objectId: _userProfile.token,
+      handler: _handleObservableType,
+    );
+  }
+
+  void _handleObservableType(FolderNotification ty, Either<Uint8List, FlowyError> result) {
+    switch (ty) {
+      case FolderNotification.UserCreateWorkspace:
+      case FolderNotification.UserDeleteWorkspace:
+      case FolderNotification.WorkspaceListUpdated:
+        result.fold(
+          (payload) => _workspacesChangedNotifier?.value = left(RepeatedWorkspacePB.fromBuffer(payload).items),
+          (error) => _workspacesChangedNotifier?.value = right(error),
+        );
+        break;
+      case FolderNotification.WorkspaceSetting:
+        result.fold(
+          (payload) => _settingChangedNotifier?.value = left(CurrentWorkspaceSettingPB.fromBuffer(payload)),
+          (error) => _settingChangedNotifier?.value = right(error),
+        );
+        break;
+      case FolderNotification.UserUnauthorized:
+        result.fold(
+          (_) {},
+          (error) => _authNotifier?.value = right(FlowyError.create()..code = ErrorCode.UserUnauthorized.value),
+        );
+        break;
+      default:
+        break;
+    }
+  }
+
+  Future<void> stop() async {
+    await _listener?.stop();
+    _workspacesChangedNotifier?.dispose();
+    _workspacesChangedNotifier = null;
+
+    _settingChangedNotifier?.dispose();
+    _settingChangedNotifier = null;
+
+    _authNotifier?.dispose();
+    _authNotifier = null;
   }
 }

@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:app_flowy/generated/locale_keys.g.dart';
+import 'package:app_flowy/workspace/application/home/home_bloc.dart';
 import 'package:app_flowy/workspace/presentation/home/home_stack.dart';
 import 'package:flowy_infra/image.dart';
 import 'package:flowy_infra/notifier.dart';
@@ -7,18 +11,20 @@ import 'package:flowy_infra_ui/style_widget/text.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:styled_widget/styled_widget.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 typedef NaviAction = void Function();
 
 class NavigationNotifier with ChangeNotifier {
   List<NavigationItem> navigationItems;
   PublishNotifier<bool> collapasedNotifier;
-  NavigationNotifier({required this.navigationItems, required this.collapasedNotifier});
+  NavigationNotifier(
+      {required this.navigationItems, required this.collapasedNotifier});
 
   void update(HomeStackNotifier notifier) {
     bool shouldNotify = false;
-    if (navigationItems != notifier.plugin.pluginDisplay.navigationItems) {
-      navigationItems = notifier.plugin.pluginDisplay.navigationItems;
+    if (navigationItems != notifier.plugin.display.navigationItems) {
+      navigationItems = notifier.plugin.display.navigationItems;
       shouldNotify = true;
     }
 
@@ -59,7 +65,7 @@ class FlowyNavigation extends StatelessWidget {
       create: (_) {
         final notifier = Provider.of<HomeStackNotifier>(context, listen: false);
         return NavigationNotifier(
-          navigationItems: notifier.plugin.pluginDisplay.navigationItems,
+          navigationItems: notifier.plugin.display.navigationItems,
           collapasedNotifier: notifier.collapsedNotifier,
         );
       },
@@ -68,7 +74,8 @@ class FlowyNavigation extends StatelessWidget {
         child: Row(children: [
           Selector<NavigationNotifier, PublishNotifier<bool>>(
               selector: (context, notifier) => notifier.collapasedNotifier,
-              builder: (ctx, collapsedNotifier, child) => _renderCollapse(ctx, collapsedNotifier, theme)),
+              builder: (ctx, collapsedNotifier, child) =>
+                  _renderCollapse(ctx, collapsedNotifier, theme)),
           Selector<NavigationNotifier, List<NavigationItem>>(
             selector: (context, notifier) => notifier.navigationItems,
             builder: (ctx, items, child) => Expanded(
@@ -83,7 +90,8 @@ class FlowyNavigation extends StatelessWidget {
     );
   }
 
-  Widget _renderCollapse(BuildContext context, PublishNotifier<bool> collapsedNotifier, AppTheme theme) {
+  Widget _renderCollapse(BuildContext context,
+      PublishNotifier<bool> collapsedNotifier, AppTheme theme) {
     return ChangeNotifierProvider.value(
       value: collapsedNotifier,
       child: Consumer(
@@ -91,14 +99,23 @@ class FlowyNavigation extends StatelessWidget {
           if (notifier.currentValue ?? false) {
             return RotationTransition(
               turns: const AlwaysStoppedAnimation(180 / 360),
-              child: FlowyIconButton(
-                width: 24,
-                onPressed: () {
-                  notifier.value = false;
-                },
-                iconPadding: const EdgeInsets.fromLTRB(2, 2, 2, 2),
-                icon: svg("home/hide_menu", color: theme.iconColor),
-              ),
+              child: Tooltip(
+                  richMessage: TextSpan(children: [
+                    TextSpan(text: "${LocaleKeys.sideBar_openSidebar.tr()}\n"),
+                    TextSpan(
+                      text: Platform.isMacOS ? "⌘+\\" : "Ctrl+\\",
+                      style: const TextStyle(color: Colors.white60),
+                    ),
+                  ]),
+                  child: FlowyIconButton(
+                    width: 24,
+                    onPressed: () {
+                      notifier.value = false;
+                      ctx.read<HomeBloc>().add(const HomeEvent.collapseMenu());
+                    },
+                    iconPadding: const EdgeInsets.fromLTRB(2, 2, 2, 2),
+                    icon: svgWidget("home/hide_menu", color: theme.iconColor),
+                  )),
             );
           } else {
             return Container();
@@ -152,7 +169,8 @@ class NaviItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(child: item.leftBarItem.padding(horizontal: 2, vertical: 2));
+    return Expanded(
+        child: item.leftBarItem.padding(horizontal: 2, vertical: 2));
   }
 }
 

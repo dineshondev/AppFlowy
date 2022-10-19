@@ -1,28 +1,64 @@
-use crate::core::{trim, Attributes, Delta, PlainTextAttributes};
+use crate::core::delta::operation::OperationAttributes;
+use crate::core::delta::{trim, DeltaOperations};
+use crate::core::DeltaOperation;
 
-pub type PlainTextDeltaBuilder = DeltaBuilder<PlainTextAttributes>;
-
-pub struct DeltaBuilder<T: Attributes> {
-    delta: Delta<T>,
+/// A builder for creating new [Operations] objects.
+///
+/// Note that all edit operations must be sorted; the start point of each
+/// interval must be no less than the end point of the previous one.
+///
+/// # Examples
+///
+/// ```
+/// use lib_ot::core::DeltaBuilder;
+/// let delta = DeltaBuilder::new()
+///         .insert("AppFlowy")
+///         .build();
+/// assert_eq!(delta.content().unwrap(), "AppFlowy");
+/// ```
+pub struct OperationBuilder<T: OperationAttributes> {
+    delta: DeltaOperations<T>,
 }
 
-impl<T> std::default::Default for DeltaBuilder<T>
+impl<T> std::default::Default for OperationBuilder<T>
 where
-    T: Attributes,
+    T: OperationAttributes,
 {
     fn default() -> Self {
-        Self { delta: Delta::new() }
+        Self {
+            delta: DeltaOperations::new(),
+        }
     }
 }
 
-impl<T> DeltaBuilder<T>
+impl<T> OperationBuilder<T>
 where
-    T: Attributes,
+    T: OperationAttributes,
 {
     pub fn new() -> Self {
-        DeltaBuilder::default()
+        OperationBuilder::default()
     }
 
+    pub fn from_operations(operations: Vec<DeltaOperation<T>>) -> DeltaOperations<T> {
+        let mut delta = OperationBuilder::default().build();
+        operations.into_iter().for_each(|operation| {
+            delta.add(operation);
+        });
+        delta
+    }
+
+    /// Retain the 'n' characters with the attributes. Use 'retain' instead if you don't
+    /// need any attributes.
+    /// # Examples
+    ///
+    /// ```
+    /// use lib_ot::text_delta::{BuildInTextAttribute, TextOperations, TextOperationBuilder};
+    ///
+    /// let mut attribute = BuildInTextAttribute::Bold(true);
+    /// let delta = TextOperationBuilder::new().retain_with_attributes(7, attribute.into()).build();
+    ///
+    /// assert_eq!(delta.json_str(), r#"[{"retain":7,"attributes":{"bold":true}}]"#);
+    /// ```
     pub fn retain_with_attributes(mut self, n: usize, attrs: T) -> Self {
         self.delta.retain(n, attrs);
         self
@@ -33,11 +69,32 @@ where
         self
     }
 
+    /// Deletes the given interval. Panics if interval is not properly sorted.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lib_ot::core::{OperationTransform, DeltaBuilder};
+    ///
+    /// let delta = DeltaBuilder::new()
+    ///         .insert("AppFlowy...")
+    ///         .build();
+    ///
+    /// let changeset = DeltaBuilder::new()
+    ///         .retain(8)
+    ///         .delete(3)
+    ///         .build();
+    ///
+    /// let new_delta = delta.compose(&changeset).unwrap();
+    /// assert_eq!(new_delta.content().unwrap(), "AppFlowy");
+    /// ```
     pub fn delete(mut self, n: usize) -> Self {
         self.delta.delete(n);
         self
     }
 
+    /// Inserts the string with attributes. Use 'insert' instead if you don't
+    /// need any attributes.
     pub fn insert_with_attributes(mut self, s: &str, attrs: T) -> Self {
         self.delta.insert(s, attrs);
         self
@@ -48,12 +105,32 @@ where
         self
     }
 
+    /// Removes trailing retain operation with empty attributes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lib_ot::core::{OperationTransform, DeltaBuilder};
+    /// use lib_ot::text_delta::{BuildInTextAttribute, TextOperationBuilder};
+    /// let delta = DeltaBuilder::new()
+    ///         .retain(3)
+    ///         .trim()
+    ///         .build();
+    /// assert_eq!(delta.ops.len(), 0);
+    ///
+    /// let delta = TextOperationBuilder::new()
+    ///         .retain_with_attributes(3, BuildInTextAttribute::Bold(true).into())
+    ///         .trim()
+    ///         .build();
+    /// assert_eq!(delta.ops.len(), 1);
+    /// ```
     pub fn trim(mut self) -> Self {
         trim(&mut self.delta);
         self
     }
 
-    pub fn build(self) -> Delta<T> {
+    /// Builds the `Delta`
+    pub fn build(self) -> DeltaOperations<T> {
         self.delta
     }
 }

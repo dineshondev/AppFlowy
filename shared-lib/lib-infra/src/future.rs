@@ -8,20 +8,20 @@ use std::{
     task::{Context, Poll},
 };
 
-pub fn wrap_future<T, O>(f: T) -> FnFuture<O>
+pub fn wrap_future<T, O>(f: T) -> AFFuture<O>
 where
     T: Future<Output = O> + Send + Sync + 'static,
 {
-    FnFuture { fut: Box::pin(f) }
+    AFFuture { fut: Box::pin(f) }
 }
 
 #[pin_project]
-pub struct FnFuture<T> {
+pub struct AFFuture<T> {
     #[pin]
     pub fut: Pin<Box<dyn Future<Output = T> + Sync + Send>>,
 }
 
-impl<T> Future for FnFuture<T>
+impl<T> Future for AFFuture<T>
 where
     T: Send + Sync,
 {
@@ -65,34 +65,3 @@ where
 }
 
 pub type BoxResultFuture<'a, T, E> = BoxFuture<'a, Result<T, E>>;
-
-#[pin_project]
-pub struct FutureResultSend<T, E> {
-    #[pin]
-    pub fut: Pin<Box<dyn Future<Output = Result<T, E>> + Send>>,
-}
-
-impl<T, E> FutureResultSend<T, E> {
-    pub fn new<F>(f: F) -> Self
-    where
-        F: Future<Output = Result<T, E>> + Send + 'static,
-    {
-        Self {
-            fut: Box::pin(async { f.await }),
-        }
-    }
-}
-
-impl<T, E> Future for FutureResultSend<T, E>
-where
-    T: Send,
-    E: Debug,
-{
-    type Output = Result<T, E>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.as_mut().project();
-        let result = ready!(this.fut.poll(cx));
-        Poll::Ready(result)
-    }
-}

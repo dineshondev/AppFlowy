@@ -1,25 +1,24 @@
 import 'package:app_flowy/workspace/presentation/widgets/dialogs.dart';
+import 'package:app_flowy/workspace/presentation/widgets/pop_up_action.dart';
+import 'package:appflowy_popover/appflowy_popover.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:expandable/expandable.dart';
 import 'package:flowy_infra/icon_data.dart';
 import 'package:flowy_infra/theme.dart';
-import 'package:flowy_infra_ui/flowy_infra_ui.dart';
 import 'package:flowy_infra_ui/style_widget/text.dart';
-import 'package:flowy_sdk/protobuf/flowy-folder-data-model/app.pb.dart';
+import 'package:flowy_sdk/protobuf/flowy-folder/app.pb.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:app_flowy/workspace/application/app/app_bloc.dart';
 import 'package:styled_widget/styled_widget.dart';
-import 'package:dartz/dartz.dart';
 import 'package:app_flowy/generated/locale_keys.g.dart';
 import 'package:flowy_infra/image.dart';
 
 import '../menu_app.dart';
 import 'add_button.dart';
-import 'right_click_action.dart';
 
 class MenuAppHeader extends StatelessWidget {
-  final App app;
+  final AppPB app;
   const MenuAppHeader(
     this.app, {
     Key? key,
@@ -37,7 +36,7 @@ class MenuAppHeader extends StatelessWidget {
           _renderExpandedIcon(context, theme),
           // HSpace(MenuAppSizes.iconPadding),
           _renderTitle(context, theme),
-          _renderAddButton(context),
+          _renderCreateViewButton(context),
         ],
       ),
     );
@@ -49,7 +48,9 @@ class MenuAppHeader extends StatelessWidget {
       height: MenuAppSizes.headerHeight,
       child: InkWell(
         onTap: () {
-          ExpandableController.of(context, rebuildOnChange: false, required: true)?.toggle();
+          ExpandableController.of(context,
+                  rebuildOnChange: false, required: true)
+              ?.toggle();
         },
         child: ExpandableIcon(
           theme: ExpandableThemeData(
@@ -68,71 +69,50 @@ class MenuAppHeader extends StatelessWidget {
   Widget _renderTitle(BuildContext context, AppTheme theme) {
     return Expanded(
       child: BlocListener<AppBloc, AppState>(
-        listenWhen: (p, c) => (p.latestCreatedView == null && c.latestCreatedView != null),
+        listenWhen: (p, c) =>
+            (p.latestCreatedView == null && c.latestCreatedView != null),
         listener: (context, state) {
-          final expandableController = ExpandableController.of(context, rebuildOnChange: false, required: true)!;
+          final expandableController = ExpandableController.of(context,
+              rebuildOnChange: false, required: true)!;
           if (!expandableController.expanded) {
             expandableController.toggle();
           }
         },
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => ExpandableController.of(context, rebuildOnChange: false, required: true)?.toggle(),
-          onSecondaryTap: () {
-            final actionList = AppDisclosureActionSheet(onSelected: (action) => _handleAction(context, action));
-            actionList.show(
-              context,
-              context,
-              anchorDirection: AnchorDirection.bottomWithCenterAligned,
-            );
-          },
-          child: BlocSelector<AppBloc, AppState, App>(
-            selector: (state) => state.app,
-            builder: (context, app) => FlowyText.medium(
-              app.name,
-              fontSize: 12,
-              color: theme.textColor,
-            ),
-          ),
-        ),
+        child: AppActionList(onSelected: (action) {
+          switch (action) {
+            case AppDisclosureAction.rename:
+              NavigatorTextFieldDialog(
+                title: LocaleKeys.menuAppHeader_renameDialog.tr(),
+                value: context.read<AppBloc>().state.app.name,
+                confirm: (newValue) {
+                  context.read<AppBloc>().add(AppEvent.rename(newValue));
+                },
+              ).show(context);
+
+              break;
+            case AppDisclosureAction.delete:
+              context.read<AppBloc>().add(const AppEvent.delete());
+              break;
+          }
+        }),
       ),
     );
   }
 
-  Widget _renderAddButton(BuildContext context) {
+  Widget _renderCreateViewButton(BuildContext context) {
     return Tooltip(
       message: LocaleKeys.menuAppHeader_addPageTooltip.tr(),
       child: AddButton(
         onSelected: (pluginBuilder) {
-          context.read<AppBloc>().add(AppEvent.createView(
-                LocaleKeys.menuAppHeader_defaultNewPageName.tr(),
-                "",
-                pluginBuilder.dataType,
-                pluginBuilder.pluginType,
-              ));
+          context.read<AppBloc>().add(
+                AppEvent.createView(
+                  LocaleKeys.menuAppHeader_defaultNewPageName.tr(),
+                  pluginBuilder,
+                ),
+              );
         },
       ).padding(right: MenuAppSizes.headerPadding),
     );
-  }
-
-  void _handleAction(BuildContext context, Option<AppDisclosureAction> action) {
-    action.fold(() {}, (action) {
-      switch (action) {
-        case AppDisclosureAction.rename:
-          TextFieldDialog(
-            title: LocaleKeys.menuAppHeader_renameDialog.tr(),
-            value: context.read<AppBloc>().state.app.name,
-            confirm: (newValue) {
-              context.read<AppBloc>().add(AppEvent.rename(newValue));
-            },
-          ).show(context);
-
-          break;
-        case AppDisclosureAction.delete:
-          context.read<AppBloc>().add(const AppEvent.delete());
-          break;
-      }
-    });
   }
 }
 
@@ -151,12 +131,66 @@ extension AppDisclosureExtension on AppDisclosureAction {
     }
   }
 
-  Widget get icon {
+  Widget icon(Color iconColor) {
     switch (this) {
       case AppDisclosureAction.rename:
-        return svg('editor/edit', color: const Color(0xffe5e5e5));
+        return svgWidget('editor/edit', color: iconColor);
       case AppDisclosureAction.delete:
-        return svg('editor/delete', color: const Color(0xffe5e5e5));
+        return svgWidget('editor/delete', color: iconColor);
     }
   }
+}
+
+class AppActionList extends StatelessWidget {
+  final Function(AppDisclosureAction) onSelected;
+  const AppActionList({
+    required this.onSelected,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.read<AppTheme>();
+    return PopoverActionList<DisclosureActionWrapper>(
+      direction: PopoverDirection.bottomWithCenterAligned,
+      actions: AppDisclosureAction.values
+          .map((action) => DisclosureActionWrapper(action))
+          .toList(),
+      buildChild: (controller) {
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => ExpandableController.of(context,
+                  rebuildOnChange: false, required: true)
+              ?.toggle(),
+          onSecondaryTap: () {
+            controller.show();
+          },
+          child: BlocSelector<AppBloc, AppState, AppPB>(
+            selector: (state) => state.app,
+            builder: (context, app) => FlowyText.medium(
+              app.name,
+              fontSize: 12,
+              color: theme.textColor,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        );
+      },
+      onSelected: (action, controller) {
+        onSelected(action.inner);
+        controller.close();
+      },
+    );
+  }
+}
+
+class DisclosureActionWrapper extends ActionCell {
+  final AppDisclosureAction inner;
+
+  DisclosureActionWrapper(this.inner);
+  @override
+  Widget? icon(Color iconColor) => inner.icon(iconColor);
+
+  @override
+  String get name => inner.name;
 }

@@ -160,3 +160,39 @@ macro_rules! impl_sql_integer_expression {
         }
     };
 }
+
+#[macro_export]
+macro_rules! impl_rev_state_map {
+    ($target:ident) => {
+        impl std::convert::From<i32> for $target {
+            fn from(value: i32) -> Self {
+                match value {
+                    0 => $target::Sync,
+                    1 => $target::Ack,
+                    o => {
+                        tracing::error!("Unsupported rev state {}, fallback to RevState::Local", o);
+                        $target::Sync
+                    }
+                }
+            }
+        }
+
+        impl std::convert::From<$target> for crate::disk::RevisionState {
+            fn from(s: $target) -> Self {
+                match s {
+                    $target::Sync => crate::disk::RevisionState::Sync,
+                    $target::Ack => crate::disk::RevisionState::Ack,
+                }
+            }
+        }
+
+        impl std::convert::From<crate::disk::RevisionState> for $target {
+            fn from(s: crate::disk::RevisionState) -> Self {
+                match s {
+                    crate::disk::RevisionState::Sync => $target::Sync,
+                    crate::disk::RevisionState::Ack => $target::Ack,
+                }
+            }
+        }
+    };
+}

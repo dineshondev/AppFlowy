@@ -25,11 +25,8 @@ impl std::convert::From<OTErrorCode> for OTError {
 }
 
 impl OTError {
-    pub fn new(code: OTErrorCode, msg: &str) -> OTError {
-        Self {
-            code,
-            msg: msg.to_owned(),
-        }
+    pub fn new(code: OTErrorCode, msg: String) -> OTError {
+        Self { code, msg }
     }
 
     pub fn context<T: Debug>(mut self, error: T) -> Self {
@@ -40,6 +37,7 @@ impl OTError {
     static_ot_error!(duplicate_revision, OTErrorCode::DuplicatedRevision);
     static_ot_error!(revision_id_conflict, OTErrorCode::RevisionIDConflict);
     static_ot_error!(internal, OTErrorCode::Internal);
+    static_ot_error!(serde, OTErrorCode::SerdeError);
 }
 
 impl fmt::Display for OTError {
@@ -60,7 +58,7 @@ impl std::convert::From<Utf8Error> for OTError {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum OTErrorCode {
     IncompatibleLength,
     ApplyInsertFail,
@@ -74,6 +72,9 @@ pub enum OTErrorCode {
     DuplicatedRevision,
     RevisionIDConflict,
     Internal,
+    PathNotFound,
+    PathIsEmpty,
+    UnexpectedEmpty,
 }
 
 pub struct ErrorBuilder {
@@ -103,6 +104,6 @@ impl ErrorBuilder {
     }
 
     pub fn build(mut self) -> OTError {
-        OTError::new(self.code, &self.msg.take().unwrap_or_else(|| "".to_owned()))
+        OTError::new(self.code, self.msg.take().unwrap_or_else(|| "".to_owned()))
     }
 }

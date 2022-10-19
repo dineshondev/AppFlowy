@@ -23,7 +23,9 @@ You are in charge of your data and customizations.
     <a href="https://twitter.com/appflowy"><b>Twitter</b></a>
 </p>
 
-<p align="center"><img src="https://github.com/AppFlowy-IO/appflowy/blob/main/doc/imgs/welcome.png" alt="The Open Source Alternative To Notion." width="1000px" /></p>
+<p align="center"><img src="https://user-images.githubusercontent.com/12026239/174754661-682980e4-e386-4685-bb6f-2da357390b61.png" alt="The Open Source Alternative To Notion." width="1000px" /></p>
+<p align="center"><img src="https://user-images.githubusercontent.com/12026239/174753177-98e4c899-2356-4137-bb42-374bba2b127b.png" alt="The Open Source Alternative To Notion." width="1000px" /></p>
+<p align="center"><img src="https://user-images.githubusercontent.com/12026239/190650183-a940f1e0-a2c5-4797-ab3a-56758f6f696c.png" alt="The Open Source Alternative To Notion." width="1000px" /></p>
 
 ## User Installation
 
@@ -37,14 +39,15 @@ Please view the [documentation](https://appflowy.gitbook.io/docs/essential-docum
 
 ## Stay Up-to-Date
 
-<p align="center"><img src="https://github.com/AppFlowy-IO/appflowy/blob/main/doc/imgs/howtostar.gif" alt="AppFlowy Github" width="1000px" /></p>
+<p align="center"><img src="https://github.com/AppFlowy-IO/appflowy/blob/main/doc/imgs/howtostar.gif" alt="AppFlowy Github - how to star the repo" width="100%" /></p>
 
 ## Getting Started with development
 Please view the [documentation](https://appflowy.gitbook.io/docs/essential-documentation/contribute-to-appflowy) for OS specific development instructions
 
 ## Roadmap
 
-[AppFlowy Roadmap](https://trello.com/b/NCyXCXXh/appflowy-roadmap)
+- [AppFlowy Roadmap ReadMe](https://appflowy.gitbook.io/docs/essential-documentation/roadmap)
+- [AppFlowy Public Roadmap](https://github.com/orgs/AppFlowy-IO/projects/5/views/12)
 
 If you'd like to propose a feature, submit an issue [here](https://github.com/AppFlowy-IO/appflowy/issues).
 
@@ -54,7 +57,16 @@ Please see the [changelog](https://www.appflowy.io/whatsnew) for more details ab
 
 ## Contributing
 
-Contributions are what make the open source community such an amazing place to be learn, inspire, and create. Any contributions you make are **greatly appreciated**. Please look at [CONTRIBUTING.md](https://github.com/AppFlowy-IO/appflowy/blob/main/doc/CONTRIBUTING.md) for details.
+Contributions are what make the open source community such an amazing place to be learn, inspire, and create. Any contributions you make are **greatly appreciated**. Please look at [Contributing to AppFlowy](https://appflowy.gitbook.io/docs/essential-documentation/contribute-to-appflowy/contributing-to-appflowy) for details.
+
+If your Pull Request is accepted as it fixes a bug, adds functionality, or makes AppFlowy's codebase significantly easier to use or understand, congratulations! If your administrative and managerial work behind the scenes that sustains the community as a whole, congratulations! You are now an official contributor to AppFlowy. Get in touch with us ([link](https://tally.so/r/mKP5z3)) to receive the very special Contributor T-shirt!
+Proudly wear your T-shirt and show it to us by tagging [@appflowy](https://twitter.com/appflowy) on Twitter.
+
+
+## Join the community to build AppFlowy together!
+<a href="https://github.com/AppFlowy-IO/AppFlowy/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=AppFlowy-IO/AppFlowy" />
+</a>
 
 ## Why Are We Building This?
 
@@ -87,3 +99,4 @@ Special thanks to these amazing projects which help power AppFlowy.IO:
 
 - [flutter-quill](https://github.com/singerdmx/flutter-quill)
 - [cargo-make](https://github.com/sagiegurari/cargo-make)
+- [contrib.rocks](https://contrib.rocks)

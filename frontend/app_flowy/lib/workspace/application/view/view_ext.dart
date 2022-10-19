@@ -1,6 +1,6 @@
-import 'package:app_flowy/plugin/plugin.dart';
+import 'package:app_flowy/startup/plugin/plugin.dart';
 import 'package:flowy_infra/image.dart';
-import 'package:flowy_sdk/protobuf/flowy-folder-data-model/view.pb.dart';
+import 'package:flowy_sdk/protobuf/flowy-folder/view.pb.dart';
 import 'package:flutter/material.dart';
 
 enum FlowyPlugin {
@@ -32,15 +32,25 @@ extension FlowyPluginExtension on FlowyPlugin {
   }
 }
 
-extension ViewExtension on View {
+extension ViewExtension on ViewPB {
   Widget renderThumbnail({Color? iconColor}) {
-    String thumbnail = this.thumbnail;
-    if (thumbnail.isEmpty) {
-      thumbnail = "file_icon";
+    String thumbnail = "file_icon";
+
+    final Widget widget = svgWidget(thumbnail, color: iconColor);
+    return widget;
+  }
+
+  PluginType get pluginType {
+    switch (layout) {
+      case ViewLayoutTypePB.Board:
+        return PluginType.board;
+      case ViewLayoutTypePB.Document:
+        return PluginType.editor;
+      case ViewLayoutTypePB.Grid:
+        return PluginType.grid;
     }
 
-    final Widget widget = svg(thumbnail, color: iconColor);
-    return widget;
+    throw UnimplementedError;
   }
 
   Plugin plugin() {
